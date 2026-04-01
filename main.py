@@ -2,41 +2,39 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-# 1. הגדרות ה-API (נשתמש בסוד ששמרנו קודם)
+# הגדרות football-data.org
 API_KEY = os.getenv('FOOTBALL_API_KEY')
-URL = "https://v3.football.api-sports.io/fixtures?live=all" # דוגמה לתוצאות חיות
+# כאן בחרתי להביא משחקים מהליגה האנגלית (PL) כדוגמה, אפשר לשנות לכל ליגה
+URL = "https://api.football-data.org/v4/competitions/PL/matches?status=FINISHED"
 
-headers = {
-    'x-rapidapi-key': API_KEY,
-    'x-rapidapi-host': 'v3.football.api-sports.io'
-}
+headers = { 'X-Auth-Token': API_KEY }
 
 def create_post():
-    # 2. משיכת נתונים מה-API
-    # הערה: כאן נצטרך להתאים את המבנה לפי ה-API הספציפי שיש לך
-    response = requests.get(URL, headers=headers)
-    data = response.json()
-    
-    # נניח שאנחנו לוקחים את התוצאה הראשונה מהרשימה כדוגמה
-    match = data['response'][0]
-    home_team = match['teams']['home']['name']
-    away_team = match['teams']['away']['name']
-    score = f"{match['goals']['home']} - {match['goals']['away']}"
-    text_to_print = f"{home_team} {score} {away_team}"
+    try:
+        response = requests.get(URL, headers=headers)
+        data = response.json()
+        
+        # לוקחים את המשחק האחרון שהסתיים
+        match = data['matches'][-1] 
+        home_team = match['homeTeam']['shortName']
+        away_team = match['awayTeam']['shortName']
+        score = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+        
+        text_to_print = f"{home_team} {score} {away_team}"
 
-    # 3. עריכת התמונה
-    img = Image.open("background.jpg")
-    draw = ImageDraw.Draw(img)
-    
-    # כאן נבחר פונט (נשתמש בברירת מחדל כרגע)
-    font = ImageFont.load_default()
-    
-    # כתיבת הטקסט במרכז התמונה (צריך לשחק עם המיקומים בהתאם לרקע שלך)
-    draw.text((100, 100), text_to_print, fill="white", font=font)
-    
-    # שמירת התמונה המוכנה
-    img.save("final_post.jpg")
-    print("הפוסט נוצר בהצלחה!")
+        # יצירת התמונה
+        img = Image.open("background.jpg")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        
+        # מיקום הטקסט (כאן תצטרך להתאים למרכז הרקע שלך)
+        draw.text((150, 200), text_to_print, fill="white", font=font)
+        
+        img.save("final_post.jpg")
+        print(f"Post created: {text_to_print}")
+        
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     create_post()
