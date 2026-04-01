@@ -2,6 +2,7 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import os
 from io import BytesIO
+from datetime import datetime
 
 API_KEY = os.getenv('FOOTBALL_API_KEY')
 LEAGUES = ['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL']
@@ -12,10 +13,57 @@ def get_logo(url):
         if not url or url.endswith('.svg'): return None
         response = requests.get(url, timeout=5)
         img = Image.open(BytesIO(response.content)).convert("RGBA")
-        img.thumbnail((110, 110)) # הגדלתי מעט את הלוגו כדי שיראה טוב
+        img.thumbnail((100, 100)) 
         return img
     except:
         return None
+
+def draw_match_row(img, y_center, match, font_score, font_names, font_date):
+    W, H = img.size
+    draw = ImageDraw.Draw(img, "RGBA")
+    
+    # 1. יצירת מלבן שחור עם פייד (Gradient) לכל שורה
+    row_h = 160
+    overlay = Image.new('RGBA', (W, row_h), (0, 0, 0, 0))
+    d_ov = ImageDraw.Draw(overlay)
+    for x in range(W):
+        # חישוב שקיפות - חזק במרכז (140) ודועך לאפס בצדדים
+        opacity = int(140 * (1 - abs(x - W/2) / (W/2))**3)
+        d_ov.line((x, 0, x, row_h), fill=(0, 0, 0, opacity))
+    img.paste(overlay, (0, int(y_center - row_h/2)), overlay)
+
+    # 2. נתונים מה-API
+    home_name = match['homeTeam']['shortName'].upper()
+    away_name = match['awayTeam']['shortName'].upper()
+    score = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+    
+    # פורמט תאריך (DD/MM/YYYY)
+    raw_date = match['utcDate'].split('T')[0]
+    date_obj = datetime.strptime(raw_date, '%Y-%m-%d')
+    formatted_date = date_obj.strftime('%d/%m/%Y')
+
+    # 3. לוגואים
+    logo_h = get_logo(match['homeTeam'].get('crest'))
+    logo_a = get_logo(match['awayTeam'].get('crest'))
+
+    # מיקומים אופקיים קבועים
+    left_side = W * 0.20
+    right_side = W * 0.80
+    center = W * 0.5
+
+    # ציור צד שמאל (בית)
+    if logo_h:
+        img.paste(logo_h, (int(left_side - 50), int(y_center - 70)), logo_h)
+    draw.text((left_side, y_center + 45), home_name, fill="white", font=font_names, anchor="mm")
+
+    # ציור מרכז (תוצאה ותאריך)
+    draw.text((center, y_center - 15), score, fill="white", font=font_score, anchor="mm")
+    draw.text((center, y_center + 35), formatted_date, fill="lightgray", font=font_date, anchor="mm")
+
+    # ציור צד ימין (חוץ)
+    if logo_a:
+        img.paste(logo_a, (int(right_side - 50), int(y_center - 70)), logo_a)
+    draw.text((right_side, y_center + 45), away_name, fill="white", font=font_names, anchor="mm")
 
 def create_post():
     for league in LEAGUES:
@@ -23,53 +71,23 @@ def create_post():
         try:
             response = requests.get(url, headers=headers)
             data = response.json()
-            if 'matches' in data and len(data['matches']) >= 3:
-                matches = data['matches'][-3:]
+            if 'matches' in data and len(data['matches']) >= 2:
+                matches = data['matches'][-2:] # לוקחים 2 משחקים כמו בדוגמה 555
+                
                 img = Image.open("background.jpg").convert("RGBA")
                 W, H = img.size
                 
-                # 1. יצירת הרקע השחור המטושטש (החלשתי את השקיפות)
-                shape_h = 600
-                overlay = Image.new('RGBA', img.size, (0,0,0,0))
-                draw_ov = ImageDraw.Draw(overlay)
-                # רקע אחיד אבל חלש (שקיפות 100 במקום 180)
-                draw_ov.rectangle([W*0.05, H/2 - shape_h/2, W*0.95, H/2 + shape_h/2], fill=(0,0,0,100))
-                img = Image.alpha_composite(img, overlay)
-                
-                draw = ImageDraw.Draw(img)
-                # גדלי פונט חדשים: תוצאה גדולה, שמות קטנים
-                font_score = ImageFont.truetype("font.ttf", 85)
-                font_names = ImageFont.truetype("font.ttf", 25)
+                # פונטים
+                font_score = ImageFont.truetype("font.ttf", 80)
+                font_names = ImageFont.truetype("font.ttf", 28)
+                font_date = ImageFont.truetype("font.ttf", 20)
 
-                y_start = H/2 - 200
-                for i, m in enumerate(matches):
-                    y_offset = y_start + (i * 200)
-                    home = m['homeTeam']['shortName'].upper()
-                    away = m['awayTeam']['shortName'].upper()
-                    score = f"{m['score']['fullTime']['home']}  -  {m['score']['fullTime']['away']}"
-                    
-                    # לוגואים
-                    logo_h = get_logo(m['homeTeam'].get('crest'))
-                    logo_a = get_logo(m['awayTeam'].get('crest'))
-                    
-                    # מיקום וסידור: לוגו למעלה, שם מתחת
-                    if logo_h: img.paste(logo_h, (int(W*0.18), int(y_offset - 90)), logo_h)
-                    if logo_a: img.paste(logo_a, (int(W*0.68), int(y_offset - 90)), logo_a)
-                    
-                    # שמות מתחת ללוגו
-                    draw.text((W*0.25, y_offset + 50), home, fill="white", font=font_names, anchor="mm")
-                    draw.text((W*0.75, y_offset + 50), away, fill="white", font=font_names, anchor="mm")
-                    
-                    # תוצאה גדולה וממורכזת
-                    draw.text((W*0.5, y_offset - 20), score, fill="white", font=font_score, anchor="mm")
-                    
-                    # 2. קווי הפרדה עדינים מאוד
-                    if i < len(matches) - 1:
-                        line_y = y_offset + 100
-                        draw.line([W*0.1, line_y, W*0.9, line_y], fill=(255, 255, 255, 40), width=2)
+                # ציור השורות
+                draw_match_row(img, H*0.45, matches[0], font_score, font_names, font_date)
+                draw_match_row(img, H*0.62, matches[1], font_score, font_names, font_date)
 
                 img.convert("RGB").save("final_post.jpg")
-                print("Polished design with name-under-logo!")
+                print("New dynamic layout created!")
                 return
         except Exception as e:
             print(f"Error: {e}")
