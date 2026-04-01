@@ -27,8 +27,8 @@ jobs:
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
         run: python main.py
 
-      - name: Upload Post Image
+      - name: Upload Post Images
         uses: actions/upload-artifact@v4
         with:
-          name: instagram-post
-          path: final_post.jpg
+          name: soccer-posts
+          path: "*.jpg" # השינוי הקריטי: אוסף את כל קבצי ה-JPG שנוצרו
