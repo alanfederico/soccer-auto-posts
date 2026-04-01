@@ -22,7 +22,7 @@ def draw_match_row(img, y_center, match, font_score, font_names, font_date):
     W, H = img.size
     draw = ImageDraw.Draw(img, "RGBA")
     
-    row_h = 145 # צמצום גובה השורה
+    row_h = 145 
     overlay = Image.new('RGBA', (W, row_h), (0, 0, 0, 0))
     d_ov = ImageDraw.Draw(overlay)
     for x in range(W):
@@ -36,29 +36,28 @@ def draw_match_row(img, y_center, match, font_score, font_names, font_date):
     date_obj = datetime.strptime(match['utcDate'].split('T')[0], '%Y-%m-%d')
     formatted_date = date_obj.strftime('%d/%m/%Y')
 
-    logo_h = get_img(match['homeTeam'].get('crest'), (90, 90))
-    logo_a = get_img(match['awayTeam'].get('crest'), (90, 90))
+    # הגדלת לוגו קבוצה קצת לשיפור הנוכחות
+    logo_h = get_img(match['homeTeam'].get('crest'), (95, 95))
+    logo_a = get_img(match['awayTeam'].get('crest'), (95, 95))
 
-    # נקודות מרכז מדויקות לצדדים
     left_x = W * 0.22
     right_x = W * 0.78
     center_x = W * 0.5
 
-    # ציור צד שמאל - לוגו ושם מיושרים למרכז ה-left_x
+    # מיקום לוגו ושם - הורדה קלה למטה למרכוז בשורה (שינוי מ-70 ל-55)
     if logo_h:
         lw, lh = logo_h.size
-        img.paste(logo_h, (int(left_x - lw/2), int(y_center - 70)), logo_h)
-    draw.text((left_x, y_center + 40), home_name, fill="white", font=font_names, anchor="mm")
+        img.paste(logo_h, (int(left_x - lw/2), int(y_center - 55)), logo_h)
+    draw.text((left_x, y_center + 52), home_name, fill="white", font=font_names, anchor="mm")
 
     # מרכז - תוצאה ותאריך
     draw.text((center_x, y_center - 15), score, fill="white", font=font_score, anchor="mm")
     draw.text((center_x, y_center + 30), formatted_date, fill="lightgray", font=font_date, anchor="mm")
 
-    # ציור צד ימין - לוגו ושם מיושרים למרכז ה-right_x
     if logo_a:
         lw, lh = logo_a.size
-        img.paste(logo_a, (int(right_x - lw/2), int(y_center - 70)), logo_a)
-    draw.text((right_x, y_center + 40), away_name, fill="white", font=font_names, anchor="mm")
+        img.paste(logo_a, (int(right_x - lw/2), int(y_center - 55)), logo_a)
+    draw.text((right_x, y_center + 52), away_name, fill="white", font=font_names, anchor="mm")
 
 def create_post():
     for league in LEAGUES:
@@ -68,7 +67,8 @@ def create_post():
             data = response.json()
             if 'matches' in data and len(data['matches']) > 0:
                 all_matches = data['matches'][-15:]
-                league_logo = get_img(data['competition'].get('emblem'), (140, 140))
+                # הגדלת לוגו הליגה ל-200X200
+                league_logo = get_img(data['competition'].get('emblem'), (200, 200))
 
                 chunks = [all_matches[i:i + 5] for i in range(0, len(all_matches), 5)]
                 
@@ -77,15 +77,15 @@ def create_post():
                     W, H = img.size
                     if league_logo:
                         lw, lh = league_logo.size
-                        img.paste(league_logo, (int(W/2 - lw/2), 60), league_logo)
+                        img.paste(league_logo, (int(W/2 - lw/2), 40), league_logo)
 
                     font_score = ImageFont.truetype("font.ttf", 75)
-                    font_names = ImageFont.truetype("font.ttf", 22) # הקטנה קלה לשיפור הסדר
+                    font_names = ImageFont.truetype("font.ttf", 22)
                     font_date = ImageFont.truetype("font.ttf", 18)
 
                     total_rows = len(chunk)
-                    spacing = 155 # צמצום המרחק בין השורות
-                    start_y = (H / 2) - ((total_rows - 1) * spacing / 2) + 50
+                    spacing = 155 
+                    start_y = (H / 2) - ((total_rows - 1) * spacing / 2) + 65 # הסטה קלה מטה בגלל לוגו הליגה הגדול
 
                     for i, match in enumerate(chunk):
                         draw_match_row(img, start_y + (i * spacing), match, font_score, font_names, font_date)
