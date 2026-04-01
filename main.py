@@ -2,39 +2,53 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-# הגדרות football-data.org
 API_KEY = os.getenv('FOOTBALL_API_KEY')
-# כאן בחרתי להביא משחקים מהליגה האנגלית (PL) כדוגמה, אפשר לשנות לכל ליגה
+# נשתמש כרגע בליגה האנגלית (PL)
 URL = "https://api.football-data.org/v4/competitions/PL/matches?status=FINISHED"
 
 headers = { 'X-Auth-Token': API_KEY }
 
 def create_post():
+    print("Starting the script...")
     try:
         response = requests.get(URL, headers=headers)
         data = response.json()
         
-        # לוקחים את המשחק האחרון שהסתיים
+        if 'matches' not in data or len(data['matches']) == 0:
+            print("No matches found! Checking why...")
+            print(f"API Response: {data}")
+            return
+
+        # לוקחים את המשחק האחרון
         match = data['matches'][-1] 
-        home_team = match['homeTeam']['shortName']
-        away_team = match['awayTeam']['shortName']
-        score = f"{match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}"
+        home = match['homeTeam']['shortName']
+        away = match['awayTeam']['shortName']
+        score_home = match['score']['fullTime']['home']
+        score_away = match['score']['fullTime']['away']
         
-        text_to_print = f"{home_team} {score} {away_team}"
+        text_to_print = f"{home} {score_home} - {score_away} {away}"
+        print(f"Match found: {text_to_print}")
 
         # יצירת התמונה
+        if not os.path.exists("background.jpg"):
+            print("Error: background.jpg not found in the folder!")
+            return
+            
         img = Image.open("background.jpg")
         draw = ImageDraw.Draw(img)
+        
+        # שימוש בפונט ברירת מחדל
         font = ImageFont.load_default()
         
-        # מיקום הטקסט (כאן תצטרך להתאים למרכז הרקע שלך)
-        draw.text((150, 200), text_to_print, fill="white", font=font)
+        # כתיבת הטקסט
+        draw.text((50, 50), text_to_print, fill="white", font=font)
         
+        # שמירה
         img.save("final_post.jpg")
-        print(f"Post created: {text_to_print}")
+        print("Success: final_post.jpg has been created!")
         
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     create_post()
