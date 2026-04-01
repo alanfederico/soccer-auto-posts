@@ -3,15 +3,16 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 from datetime import datetime
 
-# הגדרות RapidAPI
+# משיכת המפתח מה-Secret שיצרנו
 API_KEY = os.getenv('FOOTBALL_API_KEY')
-API_HOST = "api-football-v1.p.rapidapi.com" # וודא שזה ה-host שרשום לך ב-RapidAPI
+API_HOST = "api-football-v1.p.rapidapi.com"
 
 url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 
-# נבקש משחקים מהתאריך של היום
+# תאריך של היום
 today = datetime.now().strftime('%Y-%m-%d')
-querystring = {"date": today, "status": "FT"} # FT = Finished (משחקים שהסתיימו)
+# סטטוס FT אומר משחקים שהסתיימו
+querystring = {"date": today, "status": "FT"} 
 
 headers = {
     "X-RapidAPI-Key": API_KEY,
@@ -19,43 +20,40 @@ headers = {
 }
 
 def create_post():
-    print(f"Checking matches for date: {today}...")
+    print(f"Starting script for {today}...")
     try:
         response = requests.get(url, headers=headers, params=querystring)
         data = response.json()
 
-        if not data.get('response'):
-            print("No finished matches found for today yet.")
+        # בדיקה אם יש תוצאות
+        if not data.get('response') or len(data['response']) == 0:
+            print("No finished matches found yet. Try again later today.")
             return
 
-        # לוקחים את המשחק הראשון שמצאנו שנגמר
+        # לוקחים את המשחק הראשון שמצאנו
         match = data['response'][0]
         home = match['teams']['home']['name']
         away = match['teams']['away']['name']
         score_home = match['goals']['home']
         score_away = match['goals']['away']
-        league_name = match['league']['name']
+        league = match['league']['name']
 
-        text_to_print = f"{league_name}: {home} {score_home} - {score_away} {away}"
-        print(f"Found: {text_to_print}")
+        text_to_print = f"{league}\n{home} {score_home} - {score_away} {away}"
+        print(f"Match found: {text_to_print}")
 
-        # יצירת התמונה
-        if not os.path.exists("background.jpg"):
-            print("Error: background.jpg missing!")
-            return
-
+        # עיבוד התמונה
         img = Image.open("background.jpg")
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
         
-        # כתיבת הטקסט (מיקום 100, 200 - תשנה לפי הצורך)
-        draw.text((100, 200), text_to_print, fill="white", font=font)
+        # כתיבת הטקסט - מיקום (100, 100)
+        draw.multiline_text((100, 100), text_to_print, fill="white", font=font)
         
         img.save("final_post.jpg")
-        print("Success! Image created.")
+        print("Success! final_post.jpg was created.")
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error occurred: {e}")
 
 if __name__ == "__main__":
     create_post()
