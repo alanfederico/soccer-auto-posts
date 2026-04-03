@@ -1,40 +1,39 @@
 import requests
 import os
 
-RAPID_API_KEY = os.getenv('RAPIDAPI_KEY')
+RAPID_API_KEY = os.getenv('RAPID_API_KEY')
 
-# רשימת IDs של הליגות ב-API החדש
-LEAGUES_TO_TEST = {
-    "Premier League": 39,
-    "Champions League": 2,
-    "MLS": 253,
-    "La Liga": 140
-}
-
-def test_full_api():
+def test_international_matches():
+    # ID 1 הוא בדרך כלל למשחקים בינלאומיים (World)
+    # אנחנו נבקש את ה-10 האחרונים שהסתיימו (status = FT)
+    url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
+    querystring = {"league": "1", "season": "2026", "last": "10"}
+    
     headers = {
         "X-RapidAPI-Key": RAPID_API_KEY,
         "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
     }
 
-    for name, id in LEAGUES_TO_TEST.items():
-        print(f"\n--- Testing {name} (ID: {id}) ---")
-        url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-        querystring = {"league": str(id), "season": "2024", "last": "3"}
-
-        try:
-            response = requests.get(url, headers=headers, params=querystring)
-            data = response.json()
+    print("--- Fetching Last 10 International Matches ---")
+    
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        data = response.json()
+        
+        if 'response' in data and len(data['response']) > 0:
+            for match in data['response']:
+                league_name = match['league']['name']
+                home = match['teams']['home']['name']
+                away = match['teams']['away']['name']
+                score = f"{match['goals']['home']} - {match['goals']['away']}"
+                status = match['fixture']['status']['short']
+                print(f"[{league_name}] {home} {score} {away} ({status})")
+        else:
+            print("No international matches found. Printing full response for debug:")
+            print(data)
             
-            if 'response' in data and len(data['response']) > 0:
-                for match in data['response']:
-                    home = match['teams']['home']['name']
-                    away = match['teams']['away']['name']
-                    print(f"[OK] {home} vs {away}")
-            else:
-                print(f"[!] No data or limited access for {name}")
-        except Exception as e:
-            print(f"[ERROR] {name}: {e}")
+    except Exception as e:
+        print(f"Connection Error: {e}")
 
 if __name__ == "__main__":
-    test_full_api()
+    test_international_matches()
