@@ -1,22 +1,25 @@
 import requests
 import os
+from datetime import datetime
 
 api_key = os.getenv('RAPIDAPI_KEY')
-# ה-Host שעבד לנו ב-200 OK
 HOST = "v3.football.api-sports.io"
 
-def get_world_cup_results():
+def check_laliga_today():
     if not api_key:
         print("❌ Secret missing!")
         return
 
     url = f"https://{HOST}/v3/fixtures"
     
-    # הגדרות ספציפיות למוקדמות מונדיאל אירופה
+    # תאריך של היום (2026-04-03)
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # חיפוש לפי ליגה 140 (ספרד) ותאריך היום
     querystring = {
-        "league": "10", 
-        "season": "2026", # העונה הנוכחית של המוקדמות
-        "last": "20"      # ה-20 האחרונים כדי לוודא שנתפוס את יום שלישי
+        "league": "140",
+        "season": "2025", # עונת 2025/26
+        "date": today
     }
     
     headers = {
@@ -24,7 +27,7 @@ def get_world_cup_results():
         "X-RapidAPI-Host": HOST
     }
 
-    print(f"--- KushFC: Fetching World Cup Qualifiers (League 10) ---")
+    print(f"--- KushFC: Checking La Liga Matches for Today ({today}) ---")
     
     try:
         response = requests.get(url, headers=headers, params=querystring)
@@ -33,25 +36,28 @@ def get_world_cup_results():
             matches = data.get('response', [])
             
             if matches:
-                print(f"✅ הצלחנו! נמצאו {len(matches)} משחקים:")
+                print(f"✅ נמצאו {len(matches)} משחקים בליגה הספרדית!")
                 for m in matches:
                     home = m['teams']['home']['name']
                     away = m['teams']['away']['name']
+                    status = m['fixture']['status']['long']
                     score = f"{m['goals']['home']}-{m['goals']['away']}"
-                    date = m['fixture']['date'][:10] # לוקח רק את התאריך
-                    print(f"📅 {date} | ⚽ {home} {score} {away}")
+                    print(f"🏟️ {home} {score} {away} ({status})")
             else:
-                print("⚠️ לא נמצאו משחקים. מנסה עונה 2025 ליתר ביטחון...")
-                querystring["season"] = "2025"
-                response = requests.get(url, headers=headers, params=querystring)
-                matches = response.json().get('response', [])
-                for m in matches:
-                    print(f"⚽ {m['teams']['home']['name']} {m['goals']['home']}-{m['goals']['away']} {m['teams']['away']['name']}")
+                print(f"⚠️ לא נמצאו משחקים של לה-ליגה להיום ({today}).")
+                print("מנסה להביא את כל המשחקים מכל הליגות שהיו היום כדי לראות מה פספסנו...")
+                
+                res_all = requests.get(url, headers=headers, params={"date": today})
+                all_matches = res_all.json().get('response', [])
+                if all_matches:
+                    print(f"נמצאו {len(all_matches)} משחקים בליגות אחרות. הנה דוגמה:")
+                    for m in all_matches[:5]:
+                        print(f"⚽ [{m['league']['name']}] {m['teams']['home']['name']} vs {m['teams']['away']['name']}")
         else:
-            print(f"❌ שגיאה: {response.status_code} - {response.text}")
+            print(f"❌ שגיאה: {response.status_code}")
             
     except Exception as e:
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    get_world_cup_results()
+    check_laliga_today()
