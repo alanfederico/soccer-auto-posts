@@ -1,54 +1,59 @@
 import requests
 import os
+from datetime import datetime
 
 api_key = os.getenv('RAPIDAPI_KEY')
+HOST = "v3.football.api-sports.io"
 
-def get_kushfc_updates():
+def fetch_world_cup_qualifiers():
     if not api_key:
-        print("❌ Secret missing in GitHub!")
+        print("❌ Secret missing!")
         return
 
-    # ננסה את ה-Host האלטרנטיבי של ה-API
-    # לפעמים זה 'api-football-v1.p.rapidapi.com' 
-    # ולפעמים זה 'v3.football.api-sports.io'
+    url = f"https://{HOST}/v3/fixtures"
     
-    hosts = [
-        "api-football-v1.p.rapidapi.com",
-        "v3.football.api-sports.io"
-    ]
+    # נחפש משחקים מתאריך 2026-03-31 (יום שלישי האחרון)
+    # זה יביא לנו את כל המשחקים שהיו באותו יום בעולם
+    querystring = {"date": "2026-03-31"} 
     
-    for host in hosts:
-        print(f"--- Trying with Host: {host} ---")
-        
-        url = f"https://{host}/v3/fixtures"
-        querystring = {"league": "10", "season": "2025", "last": "5"}
-        
-        headers = {
-            "X-RapidAPI-Key": api_key,
-            "X-RapidAPI-Host": host
-        }
+    headers = {
+        "X-RapidAPI-Key": api_key,
+        "X-RapidAPI-Host": HOST
+    }
 
-        try:
-            response = requests.get(url, headers=headers, params=querystring)
-            print(f"Status for {host}: {response.status_code}")
+    print(f"--- KushFC: Searching for matches on 2026-03-31 ---")
+    
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        if response.status_code == 200:
+            data = response.json()
+            matches = data.get('response', [])
             
-            if response.status_code == 200:
-                data = response.json()
-                matches = data.get('response', [])
-                if matches:
-                    print(f"✅ הצלחנו עם {host}! הנה המשחקים:")
-                    for m in matches:
+            if matches:
+                found_count = 0
+                print(f"✅ נמצאו {len(matches)} משחקים בתאריך הזה. הנה המרכזיים:")
+                
+                for m in matches:
+                    league_name = m['league']['name']
+                    # נפלטר רק משחקים של נבחרות או ליגות בכירות כדי לא להעמיס
+                    if "World Cup" in league_name or "Euro" in league_name or m['league']['id'] == 10:
                         home = m['teams']['home']['name']
                         away = m['teams']['away']['name']
-                        print(f"⚽ {home} נגד {away}")
-                    return # עוצרים כאן כי מצאנו מה עובד
-                else:
-                    print(f"⚠️ מחובר ל-{host} אבל אין משחקים.")
-            else:
-                print(f"❌ שגיאה ב-{host}: {response.text}")
+                        score = f"{m['goals']['home']}-{m['goals']['away']}"
+                        print(f"🏆 [{league_name}] {home} {score} {away}")
+                        found_count += 1
                 
-        except Exception as e:
-            print(f"Error with {host}: {e}")
+                if found_count == 0:
+                    print("⚠️ נמצאו משחקים, אבל לא של מוקדמות המונדיאל. הנה דוגמה למה שכן נמצא:")
+                    example = matches[0]
+                    print(f"⚽ {example['teams']['home']['name']} נגד {example['teams']['away']['name']} ({example['league']['name']})")
+            else:
+                print("❌ לא נמצאו משחקים בכלל בתאריך 2026-03-31.")
+        else:
+            print(f"❌ שגיאה: {response.status_code} - {response.text}")
+            
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
-    get_kushfc_updates()
+    fetch_world_cup_qualifiers()
