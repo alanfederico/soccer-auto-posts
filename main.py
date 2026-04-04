@@ -4,22 +4,23 @@ import os
 api_key = os.getenv('RAPIDAPI_KEY')
 HOST = "v3.football.api-sports.io"
 
-def scan_recent_matches():
+def find_my_matches():
     if not api_key:
         print("❌ Secret missing!")
         return
 
     url = f"https://{HOST}/v3/fixtures"
     
-    # נבקש את ה-50 המשחקים האחרונים שהסתיימו בעולם באופן כללי
-    querystring = {"last": "50"}
+    # נבדוק את יום שלישי האחרון - זה יביא את כל המשחקים שהיו בעולם באותו יום
+    # אם היו מוקדמות מונדיאל, הם חייבים להופיע כאן
+    querystring = {"date": "2026-03-31"}
     
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": HOST
     }
 
-    print(f"--- KushFC: Scanning last 50 matches for World Cup Qualifiers ---")
+    print(f"--- KushFC: Fetching ALL matches from 2026-03-31 ---")
     
     try:
         response = requests.get(url, headers=headers, params=querystring)
@@ -28,25 +29,21 @@ def scan_recent_matches():
             matches = data.get('response', [])
             
             if matches:
-                print(f"🔎 נסרקו {len(matches)} משחקים. הנה מה שמצאתי:")
-                found = False
+                print(f"✅ הצלחנו! נמצאו {len(matches)} משחקים בתאריך הזה.")
+                print("הנה המשחקים המרכזיים שמצאתי:")
                 for m in matches:
-                    league = m['league']['name']
-                    league_id = m['league']['id']
+                    league_name = m['league']['name']
                     home = m['teams']['home']['name']
                     away = m['teams']['away']['name']
+                    score = f"{m['goals']['home']}-{m['goals']['away']}"
                     
-                    # מחפשים מילות מפתח של מוקדמות או נבחרות
-                    if any(word in league for word in ["World Cup", "Qualifiers", "UEFA", "FIFA"]):
-                        print(f"✅ מצאתי! [ID: {league_id}] {league}: {home} נגד {away}")
-                        found = True
-                
-                if not found:
-                    print("⚠️ לא מצאתי מוקדמות מונדיאל ב-50 המשחקים האחרונים.")
-                    print("הנה הליגה של המשחק הכי טרי ברשימה:")
-                    print(f"⚽ {matches[0]['league']['name']} (ID: {matches[0]['league']['id']})")
+                    # נדפיס הכל כדי שנוכל לראות את השם המדויק של הליגה
+                    print(f"🏆 [{league_name} | ID: {m['league']['id']}] {home} {score} {away}")
             else:
-                print("❌ ה-API חזר ריק. ייתכן שאין משחקים רשומים ב-7 הימים האחרונים.")
+                print("⚠️ התאריך חזר ריק. בוא ננסה אתמול (2026-04-02):")
+                querystring["date"] = "2026-04-02"
+                response = requests.get(url, headers=headers, params=querystring)
+                # ... (בדיקה חוזרת)
         else:
             print(f"❌ שגיאה: {response.status_code}")
             
@@ -54,4 +51,4 @@ def scan_recent_matches():
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    scan_recent_matches()
+    find_my_matches()
