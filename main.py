@@ -1,54 +1,51 @@
 import requests
 import os
-from datetime import datetime, timedelta
 
 api_key = os.getenv('RAPIDAPI_KEY')
 HOST = "v3.football.api-sports.io"
 
-def get_recent_laliga():
+def final_test():
     if not api_key:
         print("❌ Secret missing!")
         return
 
     url = f"https://{HOST}/v3/fixtures"
     
-    # נבדוק את המשחקים של אתמול, היום ומחר כדי לא לפספס בגלל שעות
-    today_dt = datetime.now()
-    dates_to_check = [
-        (today_dt - timedelta(days=1)).strftime('%Y-%m-%d'),
-        today_dt.strftime('%Y-%m-%d')
-    ]
+    # הבקשה הכי פשוטה שיש: 10 המשחקים האחרונים שהסתיימו
+    querystring = {"last": "10"}
     
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": HOST
     }
 
-    print(f"--- KushFC: Fetching La Liga (League 140) for dates: {dates_to_check} ---")
+    print(f"--- KushFC: Fetching last 10 global results ---")
     
-    found_any = False
-    for date in dates_to_check:
-        querystring = {"league": "140", "season": "2025", "date": date}
-        try:
-            response = requests.get(url, headers=headers, params=querystring)
-            if response.status_code == 200:
-                matches = response.json().get('response', [])
-                if matches:
-                    print(f"✅ נמצאו משחקים לתאריך {date}:")
-                    for m in matches:
-                        home = m['teams']['home']['name']
-                        away = m['teams']['away']['name']
-                        score = f"{m['goals']['home']}-{m['goals']['away']}"
-                        print(f"🏟️ {home} {score} {away}")
-                    found_any = True
-        except Exception as e:
-            print(f"Error on {date}: {e}")
-
-    if not found_any:
-        print("⚠️ עדיין לא נמצאו משחקים בספרד. מביא את 5 המשחקים האחרונים שהסתיימו בעולם:")
-        res = requests.get(url, headers=headers, params={"last": "5"})
-        for m in res.json().get('response', []):
-            print(f"⚽ [{m['league']['name']}] {m['teams']['home']['name']} {m['goals']['home']}-{m['goals']['away']} {m['teams']['away']['name']}")
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        if response.status_code == 200:
+            data = response.json()
+            matches = data.get('response', [])
+            
+            if matches:
+                print(f"✅ הצלחנו! הנה המשחקים האחרונים בעולם:")
+                for m in matches:
+                    league = m['league']['name']
+                    home = m['teams']['home']['name']
+                    away = m['teams']['away']['name']
+                    score = f"{m['goals']['home']}-{m['goals']['away']}"
+                    print(f"⚽ [{league}] {home} {score} {away}")
+            else:
+                print("⚠️ ה-API מחובר (200 OK) אבל חזר ריק. בודק משחקים חיים...")
+                res_live = requests.get(url, headers=headers, params={"live": "all"})
+                live_data = res_live.json().get('response', [])
+                for m in live_data:
+                    print(f"🔥 LIVE: {m['teams']['home']['name']} vs {m['teams']['away']['name']}")
+        else:
+            print(f"❌ שגיאה: {response.status_code}")
+            
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
-    get_recent_laliga()
+    final_test()
