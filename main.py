@@ -1,39 +1,50 @@
 import requests
 import os
 
-RAPID_API_KEY = os.getenv('RAPID_API_KEY')
+# שימוש בשם ה-Secret המדויק מהפרויקט הראשי שלך
+api_key = os.getenv('FOOTBALL_API_KEY')
+BASE_URL = "https://api.football-data.org/v4/matches"
 
-def test_international_matches():
-    # ID 1 הוא בדרך כלל למשחקים בינלאומיים (World)
-    # אנחנו נבקש את ה-10 האחרונים שהסתיימו (status = FT)
-    url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-    querystring = {"league": "1", "season": "2026", "last": "10"}
+def check_results():
+    if not api_key:
+        print("❌ שגיאה: ה-Secret שנקרא FOOTBALL_API_KEY לא נמצא!")
+        return
+
+    headers = {'X-Auth-Token': api_key}
     
-    headers = {
-        "X-RapidAPI-Key": RAPID_API_KEY,
-        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+    # בדיקת המשחקים של אתמול (היום שבו היה המשחק שראית)
+    # 2026-04-03
+    params = {
+        "dateFrom": "2026-04-03",
+        "dateTo": "2026-04-03"
     }
 
-    print("--- Fetching Last 10 International Matches ---")
+    print(f"--- KushFC: Checking Football-Data.org for April 3rd ---")
     
     try:
-        response = requests.get(url, headers=headers, params=querystring)
-        data = response.json()
-        
-        if 'response' in data and len(data['response']) > 0:
-            for match in data['response']:
-                league_name = match['league']['name']
-                home = match['teams']['home']['name']
-                away = match['teams']['away']['name']
-                score = f"{match['goals']['home']} - {match['goals']['away']}"
-                status = match['fixture']['status']['short']
-                print(f"[{league_name}] {home} {score} {away} ({status})")
+        response = requests.get(BASE_URL, headers=headers, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            matches = data.get('matches', [])
+            
+            if matches:
+                print(f"✅ נמצאו {len(matches)} משחקים במערכת.")
+                for m in matches:
+                    league = m['competition']['name']
+                    home = m['homeTeam']['name']
+                    away = m['awayTeam']['name']
+                    score_h = m['score']['fullTime']['home']
+                    score_a = m['score']['fullTime']['away']
+                    
+                    # הדפסה ברורה של התוצאות
+                    print(f"⚽ [{league}] {home} {score_h}-{score_a} {away}")
+            else:
+                print("⚠️ לא נמצאו משחקים רשומים לתאריך הזה.")
         else:
-            print("No international matches found. Printing full response for debug:")
-            print(data)
+            print(f"❌ שגיאה בחיבור (סטטוס {response.status_code}): {response.text}")
             
     except Exception as e:
-        print(f"Connection Error: {e}")
+        print(f"❌ תקלה בהרצה: {e}")
 
 if __name__ == "__main__":
-    test_international_matches()
+    check_results()
