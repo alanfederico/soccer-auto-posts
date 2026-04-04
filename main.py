@@ -4,9 +4,9 @@ import os
 api_key = os.getenv('RAPIDAPI_KEY')
 HOST = "v3.football.api-sports.io"
 
-def get_anything_available():
+def get_available_data():
     if not api_key:
-        print("❌ Secret missing!")
+        print("❌ Secret missing in GitHub!")
         return
 
     url = f"https://{HOST}/v3/fixtures"
@@ -15,17 +15,17 @@ def get_anything_available():
         "X-RapidAPI-Host": HOST
     }
 
-    print(f"--- KushFC: Fetching ANY available matches ---")
+    print(f"--- KushFC: Searching for ANY available matches ---")
     
     try:
-        # נסיון 1: משחקים חיים (מכל ליגה שהיא)
+        # נסיון 1: משחקים חיים מכל העולם
         response = requests.get(url, headers=headers, params={"live": "all"})
         matches = response.json().get('response', [])
         
         if not matches:
-            # נסיון 2: אם אין חי, נביא את ה-10 האחרונים שהסתיימו בעולם (מכל ליגה)
-            print("⚠️ אין משחקים חיים, מנסה תוצאות אחרונות...")
-            response = requests.get(url, headers=headers, params={"last": "10"})
+            # נסיון 2: 15 התוצאות האחרונות שהסתיימו (מכל הליגות)
+            print("⚠️ אין משחקים חיים, בודק תוצאות אחרונות...")
+            response = requests.get(url, headers=headers, params={"last": "15"})
             matches = response.json().get('response', [])
 
         if matches:
@@ -37,10 +37,10 @@ def get_anything_available():
                 score = f"{m['goals']['home']}-{m['goals']['away']}"
                 print(f"⚽ [{league}] {home} {score} {away}")
         else:
-            print("❌ גם החיפוש הכללי חזר ריק. כדאי לבדוק ב-RapidAPI Dashboard אם המנוי פעיל.")
+            print("❌ גם החיפוש הכללי חזר ריק. ייתכן שיש בעיה זמנית ב-RapidAPI.")
             
     except Exception as e:
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    get_anything_available()
+    get_available_data()
