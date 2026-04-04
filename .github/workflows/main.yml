@@ -20,15 +20,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install requests pillow
 
       - name: Run script
         env:
-          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+          # כאן החיבור הקריטי: 
+          # אנחנו אומרים ל-GitHub לקחת את הסוד שקראת לו RAPIDAPI_KEY
+          # ולהכניס אותו למשתנה שהקוד שלך מחפש
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         run: python main.py
 
       - name: Upload Post Images
         uses: actions/upload-artifact@v4
         with:
           name: soccer-posts
-          path: "*.jpg" # השינוי הקריטי: אוסף את כל קבצי ה-JPG שנוצרו
+          path: "*.jpg"
