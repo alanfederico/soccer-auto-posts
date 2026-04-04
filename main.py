@@ -4,48 +4,50 @@ import os
 api_key = os.getenv('RAPIDAPI_KEY')
 HOST = "v3.football.api-sports.io"
 
-def final_test():
+def rescue_mission():
     if not api_key:
         print("❌ Secret missing!")
         return
 
-    url = f"https://{HOST}/v3/fixtures"
-    
-    # הבקשה הכי פשוטה שיש: 10 המשחקים האחרונים שהסתיימו
-    querystring = {"last": "10"}
-    
+    # שלב 1: בדיקה אילו ליגות בכלל פתוחות לך בחשבון
+    url_leagues = f"https://{HOST}/v3/leagues"
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": HOST
     }
 
-    print(f"--- KushFC: Fetching last 10 global results ---")
+    print(f"--- KushFC: Checking available leagues ---")
     
     try:
-        response = requests.get(url, headers=headers, params=querystring)
+        # ננסה לבדוק רק אם הליגה הספרדית (140) או אנגליה (39) זמינות
+        response = requests.get(url_leagues, headers=headers, params={"id": "140"})
         if response.status_code == 200:
-            data = response.json()
-            matches = data.get('response', [])
-            
-            if matches:
-                print(f"✅ הצלחנו! הנה המשחקים האחרונים בעולם:")
-                for m in matches:
-                    league = m['league']['name']
-                    home = m['teams']['home']['name']
-                    away = m['teams']['away']['name']
-                    score = f"{m['goals']['home']}-{m['goals']['away']}"
-                    print(f"⚽ [{league}] {home} {score} {away}")
+            leagues = response.json().get('response', [])
+            if leagues:
+                print(f"✅ ליגה ספרדית זמינה! מנסה לשלוף משחקים חיים מכל העולם...")
+                
+                # אם הליגות זמינות, ננסה לשלוף את כל המשחקים של היום ללא סינון ליגה
+                url_fixtures = f"https://{HOST}/v3/fixtures"
+                # נשתמש בפרמטר 'live' כדי לראות אם משהו רץ עכשיו, זה הכי אמין
+                res_live = requests.get(url_fixtures, headers=headers, params={"live": "all"})
+                matches = res_live.json().get('response', [])
+                
+                if matches:
+                    for m in matches[:10]:
+                        print(f"🔥 LIVE: {m['teams']['home']['name']} {m['goals']['home']}-{m['goals']['away']} {m['teams']['away']['name']}")
+                else:
+                    print("⚠️ אין משחקים חיים. מנסה לשלוף את המשחקים של אתמול (2026-04-02)...")
+                    res_yesterday = requests.get(url_fixtures, headers=headers, params={"date": "2026-04-02"})
+                    y_matches = res_yesterday.json().get('response', [])
+                    for m in y_matches[:10]:
+                        print(f"🏟️ {m['teams']['home']['name']} {m['goals']['home']}-{m['goals']['away']} {m['teams']['away']['name']} ({m['league']['name']})")
             else:
-                print("⚠️ ה-API מחובר (200 OK) אבל חזר ריק. בודק משחקים חיים...")
-                res_live = requests.get(url, headers=headers, params={"live": "all"})
-                live_data = res_live.json().get('response', [])
-                for m in live_data:
-                    print(f"🔥 LIVE: {m['teams']['home']['name']} vs {m['teams']['away']['name']}")
+                print("❌ הליגה הספרדית לא מופיעה במנוי שלך.")
         else:
-            print(f"❌ שגיאה: {response.status_code}")
+            print(f"❌ שגיאת חיבור: {response.status_code}")
             
     except Exception as e:
         print(f"Error: {e}")
 
 if __name__ == "__main__":
-    final_test()
+    rescue_mission()
